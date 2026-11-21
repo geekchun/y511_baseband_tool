@@ -39,7 +39,17 @@ README.md                             本文档
 - 从设备 dump（需 root）：`adb shell su -c "dd if=/system/etc/firmware/modem_1_tg_n.img of=/sdcard/tg.img"`，再 `adb pull /sdcard/tg.img app/assets/modem_1_tg_n.img`；
 - 从原厂固件包解出（`update.app` / SP Flash Tool 散包中的 `modem_1_*_n.img`）。
 
-放好后 `build.py` 会原样内置；若 `assets/` 为空，脚本会尝试从仓库外的 `../backup/` 按 `t00_tg.img`、`modem_1_wg_n.img.orig` 拷入，仍找不到直接报错退出。换了镜像要同步更新 `MainActivity.java` 顶部的 `MD5_TG` / `MD5_WG`，否则写入前校验会中止。
+放好后 `build.py` 会原样内置；若 `assets/` 为空，脚本会尝试从仓库外的 `../backup/` 按 `t00_tg.img`、`modem_1_wg_n.img.orig` 拷入，仍找不到直接报错退出。
+
+两份缺一不可：只有其中一份时构建会立刻中止，不会产出缺少固件的包。换了镜像要同步更新 `MainActivity.java` 顶部的 `MD5_TG` / `MD5_WG`，否则应用在写入前校验会中止。
+
+TG 原版可直接从设备导出（无需 root）：
+
+```bat
+adb pull /system/etc/firmware/modem_1_tg_n.img app\assets\modem_1_tg_n.img
+```
+
+U00 的 `modem_1_wg_n.img` 只有原厂包里才有，设备上没有。
 
 ---
 
@@ -66,7 +76,32 @@ build_tools_env/
   plat/android-11/android.jar
 ```
 
-目录名 `android-11` / `jdk-17.0.2` 只是历史命名，实际内容为 JDK 17 + build-tools 30.0.x + platform API 30 的 `android.jar`，按上述名字摆好即可；`bt` 目录必须是 `aapt2.exe`、`zipalign.exe`、`lib/d8.jar`、`lib/apksigner.jar` 齐全的那一份。
+#### 2.2.1 从零下载（三个包，约 300 MB）
+
+在工程根目录执行：
+
+```bat
+curl -L -o jdk17.zip      https://api.adoptium.net/v3/binary/latest/17/ga/windows/x64/jdk/hotspot/normal/eclipse
+curl -L -o buildtools.zip https://dl.google.com/android/repository/91936d4ee3ccc839f0addd53c9ebf087b1e39251.build-tools_r30.0.3-windows.zip
+curl -L -o platform30.zip https://dl.google.com/android/repository/platform-30_r03.zip
+```
+
+> build-tools 的 Windows 包文件名带一段哈希前缀（`91936d4e…`），直接写 `build-tools_r30.0.3-windows.zip` 会 404；上面的地址来自 SDK 索引 `repository2-3.xml`。
+
+解压摆放：
+
+```bat
+mkdir build_tools_env\bt build_tools_env\plat build_tools_env\jdk
+tar -xf jdk17.zip      -C build_tools_env\jdk       :: 解出 jdk-17.x.y\，重命名为 jdk-17.0.2
+tar -xf buildtools.zip -C build_tools_env\bt        :: 解出 android-11\，内部即 aapt2.exe、zipalign.exe、lib\
+tar -xf platform30.zip -C build_tools_env\plat      :: 解出 android-11\，取其中的 android.jar
+```
+
+两个 zip 解出来都叫 `android-11`，必须分别放进 `bt\` 与 `plat\`，否则会互相覆盖。
+
+#### 2.2.2 现有包复用
+
+已经下载过 `jdk17.zip` / `buildtools.zip` / `platform30.zip` 时，直接按上面的 `tar -xf` 三步摆放即可，无需联网。目录名 `android-11`、`jdk-17.0.2` 只是历史命名，实际内容是 JDK 17 + build-tools 30.0.3 + platform API 30；`bt` 目录必须是 `aapt2.exe`、`zipalign.exe`、`lib/d8.jar`、`lib/apksigner.jar` 齐全的那一份。
 
 `build.py` 顶部的路径映射：
 

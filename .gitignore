@@ -1,7 +1,6 @@
 # 构建产物
 app/out/
 app/*.apk
-app/assets/*.img
 
 # 工具链与缓存
 build_tools_env/jdk/
